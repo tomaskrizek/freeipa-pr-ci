@@ -1,4 +1,3 @@
 ---
-git_repo: https://github.com/freeipa/freeipa.git
+git_repo: https://pagure.io/freeipa.git
 build_chroot: fedora-25-x86_64
-freeipa_copr: "@freeipa/freeipa-master"
