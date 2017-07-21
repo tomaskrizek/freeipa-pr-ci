@@ -40,3 +40,10 @@
   shell: vagrant destroy
   args:
     chdir: "{{ template_box_dir }}"
+
+- name: upload box to vagrantcloud
+  shell: |
+    ../vagrant/box_uploader.py \
+      "{{ template_box_name }}" \
+      "{{ template_box_dir }}/{{ template_box_name }}.box" \
+      --bump-revision
