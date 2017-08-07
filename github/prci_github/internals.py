@@ -9,6 +9,9 @@ import requests
 import time
 import yaml
 
+import cachecontrol
+import redis
+
 
 RACE_TIMEOUT = 10
 CREATE_TIMEOUT = 5
@@ -233,34 +236,67 @@ class Tasks(collections.Set, collections.Mapping):
         self.job_cls = job_cls
         self.tasks_conf = {}
 
+        for changed_file in pull.pull.files():
+            if changed_file.filename == tasks_config_path:
+                logger.debug('Tasks file was modified in PR %d. Using tasks '
+                             'file from PR.', pull.pull.number)
+                ref = pull.pull.head.sha
+                tasks_from_pr = True
+        else:
+            logger.debug('Task file was not modified in PR %d. Using tasks '
+                         'file from target branch', pull.pull.number)
+            ref = pull.pull.base.ref
+            tasks_from_pr = False
+
         # TODO: Use API once most of the PRs have tasks file
-        # tasks_file = repo.file_contents(tasks_config_path, pull.pull.head.sha)
+        # tasks_file = repo.file_contents(tasks_config_path, ref)
         # if not tasks_file:
-        #     logger.warning('Tasks file not present in PR %d', pull.pull.number)
+        #     if tasks_from_pr:
+        #         logger.warning('Tasks file was removed in PR %d',
+        #                        pull.pull.number)
+        #     else:
+        #         logger.warning('Tasks file not present in target branch %s',
+        #                        pull.pull.base.ref)
         # else:
         #     try:
         #         self.tasks_conf = yaml.load(
         #                             base64.b64decode(tasks_file.content)
         #                           )['jobs']
         #     except (yaml.error.YAMLError, TypeError, KeyError) as err:
-        #         logger.warning('Failed to decode tasks file in PR %d: %s',
-        #                        pull.pull.number, err)
+        #         if tasks_from_pr:
+        #             logger.warning('Failed to decode tasks file from PR %d: '
+        #                            '%s', pull.pull.number, err)
+        #         else:
+        #             logger.warning('Failed to decode tasks file from branch '
+        #                            '%s: %s', pull.pull.base.ref, err)
         tasks_file_url = (
             "https://raw.githubusercontent.com/{repo.owner.login}/{repo.name}/"
-            "{pull.pull.head.sha}/{tasks_path}".format(repo=repo, pull=pull,
-                                                  tasks_path=tasks_config_path)
+            "{ref}/{tasks_path}".format(repo=repo, ref=ref,
+                                        tasks_path=tasks_config_path)
         )
+
         logger.debug("Retrieving tasks file %s", tasks_file_url)
 
-        response = requests.get(tasks_file_url)
+        session = cachecontrol.CacheControl(requests.session(),
+                                            cache=redis.Redis())
+        response = session.get(tasks_file_url)
         if response.status_code == 200:
             try:
                 self.tasks_conf = yaml.load(response.content)['jobs']
             except (yaml.error.YAMLError, TypeError, KeyError) as err:
-                logger.warning('Failed to decode tasks file in PR %d: %s',
-                               pull.pull.number, err)
+                if tasks_from_pr:
+                    logger.warning('Failed to decode tasks file from PR %d: '
+                                   '%s', pull.pull.number, err)
+                else:
+                    logger.warning('Failed to decode tasks file from branch '
+                                   '%s: %s', pull.pull.base.ref, err)
         else:
-            logger.warning('Tasks file not present in PR %d', pull.pull.number)
+            if tasks_from_pr:
+                logger.warning('Tasks file was removed in PR %d',
+                               pull.pull.number)
+            else:
+                logger.warning('Tasks file not present in target branch %s',
+                               pull.pull.base.ref)
 
     def __len__(self):
         return len(Statuses(self.repo, self.pull, self.tasks_conf.keys()))
