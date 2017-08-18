@@ -15,11 +15,16 @@
     - name: pr_ci_repo_branch
       prompt: Branch of PR CI repo to test
       private: false
+  gather_facts: false
   pre_tasks:
     - name: check we're not deploying against FreeIPA repo
       debug:
         var: monitored_repo_owner
       failed_when: monitored_repo_owner == "freeipa"
+    - name: install python and deps for ansible modules
+      raw: dnf install -y python2 python2-dnf libselinux-python
+    - name: gather facts
+      setup:
   roles:
     - role: runner
       deploy_ssh_key: true

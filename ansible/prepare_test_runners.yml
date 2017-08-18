@@ -6,6 +6,12 @@
     - name: github_token
       prompt: API token for GitHub
       private: false
+  gather_facts: false
+  pre_tasks:
+    - name: install python and deps for ansible modules
+      raw: dnf install -y python2 python2-dnf libselinux-python
+    - name: gather facts
+      setup:
   roles:
     - role: runner
       deploy_ssh_key: true
