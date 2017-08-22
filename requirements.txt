@@ -5,3 +5,6 @@ PyYAML
 tqdm
 cachecontrol
 raven
+python-dateutil
+pytz
+parse

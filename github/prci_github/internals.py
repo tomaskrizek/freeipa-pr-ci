@@ -4,7 +4,10 @@ import abc
 import base64
 import collections
 import datetime
+import dateutil.parser
 import logging
+import parse
+import pytz
 import requests
 import time
 import yaml
@@ -17,6 +20,8 @@ GITHUB_DESCRIPTION_LIMIT = 139
 RACE_TIMEOUT = 20
 CREATE_TIMEOUT = 5
 RERUN_LABEL = 're-run'
+TASK_TAKEN_FMT = 'Taken by {runner_id} on {date}'
+STALE_TASK_EXTRA_TIME = 300
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -183,7 +188,7 @@ class Task(object):
 
     def take(self, runner_id):
         date = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-        desc = 'Taken by {} on {}'.format(runner_id, date)
+        desc = TASK_TAKEN_FMT.format(runner_id=runner_id, date=date)
         logger.debug('Attempting to take task')
         Status.create(self.repo, self.pull, self.name, desc, '', 'pending')
         time.sleep(RACE_TIMEOUT)
@@ -367,6 +372,31 @@ class TaskQueue(collections.Iterator):
                 logger.debug('Recreating tasks for PR %d', pull.pull.number)
                 pull.labels.discard(RERUN_LABEL)
                 tasks.create()
+            else:
+                # check for stale tasks and recreate them
+                now = datetime.datetime.now(pytz.UTC)
+                for task in tasks:
+                    timeout = datetime.timedelta(seconds=task.job.timeout)
+                    if not timeout:
+                        continue
+
+                    res = parse.parse(TASK_TAKEN_FMT, task.status.description)
+                    if not res:
+                        continue
+
+                    taken_on = dateutil.parser.parse(res['date'])
+                    extra = datetime.timedelta(seconds=STALE_TASK_EXTRA_TIME)
+                    deadline = taken_on + timeout + extra
+                    if deadline > now:
+                        continue
+
+                    taken_by = res['runner_id']
+                    logger.debug("Task %s on PR %d is stale, recreating. Was "
+                                 "taken on %s by %s timeout %ds.", task.name,
+                                 task.pull.pull.number, taken_on, taken_by,
+                                 timeout)
+                    Status.create(task.repo, task.pull, task.name,
+                                  'unassigned', '', 'pending')
 
     def __next__(self):
         """
@@ -430,6 +460,11 @@ class AbstractJob(collections.Callable):
         """
         self.job = job
         self.target = build_target
+
+    @property
+    def timeout(self):
+        # by default no timeout
+        return 0
 
     @abc.abstractmethod
     def __call__(self, depends_results=None):
