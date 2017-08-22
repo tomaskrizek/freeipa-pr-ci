@@ -1,5 +1,5 @@
 [image_box]
 # added dynamically from box_prepare (because IP is obtained from DHCP)
 
-[runner]
+[runners]
 localhost ansible_connection='local'

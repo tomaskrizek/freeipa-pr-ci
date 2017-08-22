@@ -1,5 +1,5 @@
 ---
-- hosts: runner_devel
+- hosts: runners_devel
   remote_user: root
   name: prepare development test runners
   vars_prompt:
