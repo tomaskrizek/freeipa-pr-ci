@@ -1,2 +1,0 @@
-pyvagrantfile>=0.5.11
-jinja2

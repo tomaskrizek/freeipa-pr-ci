@@ -1,0 +1,15 @@
+---
+- name: check if default pool exists in libvirt
+  shell: virsh vol-list default
+  register: virsh_res
+  failed_when: false
+
+- name: create default pool in libvirt
+  block:
+    - copy:
+        src: libvirt_default_pool.xml
+        dest: /tmp/libvirt_default_pool.xml
+    - shell: virsh pool-define /tmp/libvirt_default_pool.xml
+    - shell: virsh pool-start default
+    - shell: virsh pool-autostart default
+  when: virsh_res.rc != 0

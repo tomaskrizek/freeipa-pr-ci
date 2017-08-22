@@ -1,7 +1,7 @@
 import logging
 import os
-# from pyvagrantfile.Parser import VagrantParser
 
+from . import constants
 from .common import PopenTask, PopenException, FallibleTask, TaskException
 
 
@@ -27,6 +27,12 @@ def __setup_provision(task):
     This tries to execute the provision twice due to
     problems described in issue #20
     """
+    task.execute_subtask(
+        VagrantBoxDownload(
+            box_name=task.template_name,
+            box_version=task.template_version,
+            link_image=task.link_image,
+            timeout=None))
     try:
         task.execute_subtask(VagrantUp(timeout=None))
         task.execute_subtask(VagrantProvision(timeout=None))
@@ -75,39 +81,42 @@ class VagrantCleanup(VagrantTask):
 
 
 class VagrantBoxDownload(VagrantTask):
-    def __init__(self, path=None, **kwargs):
+    def __init__(self, box_name, box_version, link_image=True, **kwargs):
+        """
+        link_image: if True, a symbolic link will be created in libvirt to
+                    conserve storage (otherwise, libvirt copies it by default)
+        """
         super(VagrantBoxDownload, self).__init__(**kwargs)
-        self.path = path
+        self.box = VagrantBox(box_name, box_version)
+        self.link_image = True
 
     def _run(self):
-        raise NotImplementedError
-        # FIXME pyvagrantfile hangs on our vagrantfile for some reason
-        vagrantfile = self.get_vagrantfile()
-        box = VagrantBox.from_vagrantfile(vagrantfile)
-        if not box.exists():
+        if not self.box.exists():
             try:
-                self.execute_task(
+                self.execute_subtask(
                     PopenTask([
-                        'vagrant', 'box', 'add', box.name,
-                        '--box-version', box.version,
-                        '--provider', box.provider]))
+                        'vagrant', 'box', 'add', self.box.name,
+                        '--box-version', self.box.version,
+                        '--provider', self.box.provider],
+                        timeout=None))
             except TaskException as exc:
-                # TODO handle PopenException: remove older versions and retry?
-                logging.warning("Box download failed")
+                logging.error('Box download failed')
                 raise exc
 
-    def get_vagrantfile(self):
-        raise NotImplementedError
-        path = self.vagrantfile
-        if self.path is not None:
-            path = os.path.join(self.path, path)
-        try:
-            with open(path) as vf:
-                content = vf.read()
-        except (OSError, IOError):
-            raise TaskException(self, 'unable to open "{path}"'.format(
-                path=path))
-        return VagrantParser.parses(content=content)
+        # link box to libvirt
+        if self.link_image and not self.box.libvirt_exists():
+            try:
+                self.execute_subtask(
+                    PopenTask([
+                        'ln', self.box.vagrant_path, self.box.libvirt_path]))
+                self.execute_subtask(
+                    PopenTask([
+                        'chown', 'qemu:qemu', self.box.libvirt_path]))
+                self.execute_subtask(
+                    PopenTask(['virsh', 'pool-refresh', 'default']))
+            except TaskException as exc:
+                logging.warning('Failed to create libvirt link to image')
+                raise exc
 
 
 class VagrantBox(object):
@@ -116,22 +125,31 @@ class VagrantBox(object):
         self.version = version
         self.provider = provider
 
-    @staticmethod
-    def from_vagrantfile(vagrantfile):
-        try:
-            box = vagrantfile.vm.box
-            box_version = vagrantfile.vm.box_version
-        except AttributeError:
-            raise KeyError('vm.box or vm.box_config not found in vagrantfile')
-        return VagrantBox(box, box_version)
+    @property
+    def escaped_name(self):
+        return self.name.replace(
+            '/', '-VAGRANTSLASH-')
+
+    @property
+    def vagrant_path(self):
+        return constants.VAGRANT_IMAGE_PATH.format(
+            name=self.escaped_name,
+            version=self.version,
+            provider=self.provider)
+
+    @property
+    def libvirt_name(self):
+        return '{escaped_name}_vagrant_box_image'.format(
+            escaped_name=self.escaped_name)
+
+    @property
+    def libvirt_path(self):
+        return constants.LIBVIRT_IMAGE_PATH.format(
+            libvirt_name=self.libvirt_name,
+            version=self.version)
 
     def exists(self):
-        cmd = (
-            'vagrant box list | '
-            'grep -e "{name}\s\+({provider},\s\+{version}"').format(
-                name=self.name,
-                provider=self.provider,
-                version=self.version)
-        task = PopenTask(cmd, shell=True, raise_on_err=False)
-        self.execute_subtask(task)
-        return task.returncode == 0
+        return os.path.exists(self.vagrant_path)
+
+    def libvirt_exists(self):
+        return os.path.exists(self.libvirt_path)

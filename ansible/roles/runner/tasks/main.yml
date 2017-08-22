@@ -6,6 +6,7 @@
   when: enable_nested_virt
   tags: nested_virt
 - include: setup.yml
+- include: create_libvirt_pool.yml
 - include: deploy_pr_ci.yml
 - include: deploy_prci_configuration.yml
   when: deploy_prci_configuration

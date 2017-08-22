@@ -14,7 +14,7 @@ from .vagrant import with_vagrant
 
 class JobTask(FallibleTask):
     def __init__(self, template, no_destroy=False, publish_artifacts=True,
-                 **kwargs):
+                 link_image=True, **kwargs):
         super(JobTask, self).__init__(**kwargs)
         self.template_name = template['name']
         self.template_version = template['version']
@@ -25,6 +25,7 @@ class JobTask(FallibleTask):
         self.returncode = 1
         self.no_destroy = no_destroy
         self.description = '<no description>'
+        self.link_image = link_image
 
     @property
     def data_dir(self):

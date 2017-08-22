@@ -19,6 +19,8 @@ RUNNER_LOG = 'runner.log'
 FREEIPA_PRCI_REPOFILE = 'freeipa-prci.repo'
 ANSIBLE_VARS_TEMPLATE = '{action_name}.vars.yml'
 VAGRANTFILE_TEMPLATE = 'Vagrantfile.{action_name}'
+VAGRANT_IMAGE_PATH = '/root/.vagrant.d/boxes/{name}/{version}/{provider}/box.img'
+LIBVIRT_IMAGE_PATH = '/var/lib/libvirt/images/{libvirt_name}_{version}.img'
 
 ANSIBLE_CFG_FILE = os.path.join(TEMPLATES_DIR, 'ansible.cfg')
 
