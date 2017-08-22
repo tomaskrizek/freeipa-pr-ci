@@ -39,6 +39,7 @@
   service:
     name: nfs
     enabled: true
+    state: started
 
 - name: start&enable libvirt services
   service:
