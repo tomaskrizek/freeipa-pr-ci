@@ -252,6 +252,7 @@ class Tasks(collections.Set, collections.Mapping):
                              'file from PR.', pull.pull.number)
                 ref = pull.pull.head.sha
                 tasks_from_pr = True
+                break
         else:
             logger.debug('Task file was not modified in PR %d. Using tasks '
                          'file from target branch', pull.pull.number)
