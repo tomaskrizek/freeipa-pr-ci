@@ -10,7 +10,6 @@
   pip:
     requirements: /root/freeipa-pr-ci/requirements.txt
     executable: pip3
-    extra_args: --upgrade
     state: present
 
 - name: create systemd unit for prci
