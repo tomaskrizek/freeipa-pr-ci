@@ -16,7 +16,7 @@ import github3
 import redis
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from prci_github import TaskQueue, AbstractJob, TaskAlreadyTaken, JobResult
+from prci_github import TaskQueue, AbstractJob, JobResult
 from prci_github.adapter import GitHubAdapter
 
 
@@ -259,7 +259,8 @@ def main():
                          GitHubAdapter(cache=redis.Redis()))
 
     repo = github.repository(repo['owner'], repo['name'])
-    task_queue = TaskQueue(repo, tasks_file, JobDispatcher, whitelist)
+    task_queue = TaskQueue(repo, tasks_file, JobDispatcher, runner_id,
+                           whitelist)
 
     handler = ExitHandler()
     signal.signal(signal.SIGINT, handler.finish)
@@ -273,11 +274,6 @@ def main():
                 task = next(task_queue)
             except StopIteration:
                 time.sleep(no_task_backoff_time)
-                continue
-
-            try:
-                task.take(runner_id)
-            except TaskAlreadyTaken:
                 continue
 
             handler.register_task(task)

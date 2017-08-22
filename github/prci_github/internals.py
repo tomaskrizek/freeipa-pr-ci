@@ -187,6 +187,10 @@ class Task(object):
         return False
 
     def take(self, runner_id):
+        status = Status(self.repo, self.pull, self.name)
+        if status.state != 'pending' or status.description != 'unassigned':
+            raise TaskAlreadyTaken(status.description)
+
         date = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         desc = TASK_TAKEN_FMT.format(runner_id=runner_id, date=date)
         logger.debug('Attempting to take task')
@@ -346,11 +350,13 @@ class Tasks(collections.Set, collections.Mapping):
 
 
 class TaskQueue(collections.Iterator):
-    def __init__(self, repo, tasks_config_path, job_cls, allowed_users=[]):
+    def __init__(self, repo, tasks_config_path, job_cls, runner_id,
+                 allowed_users=[]):
         self.repo = repo
         self.job_cls = job_cls
         self.tasks_config_path = tasks_config_path
         self.allowed_users = allowed_users
+        self.runner_id = runner_id
 
     def create_tasks_for_pulls(self):
         """
@@ -426,12 +432,18 @@ class TaskQueue(collections.Iterator):
                 if task.can_run():
                     tasks.append(task)
 
-        if tasks:
-            return max(
-                tasks,
-                key=lambda t: ('prioritize' in t.pull.labels, t.priority,
-                               tasks_done_per_pr[t.pull.pull.number]),
-            )
+        for task in sorted(
+            tasks,
+            reverse=True,
+            key=lambda t: ('prioritize' in t.pull.labels, t.priority,
+                           tasks_done_per_pr[t.pull.pull.number]),
+        ):
+            try:
+                task.take(self.runner_id)
+            except TaskAlreadyTaken:
+                continue
+            else:
+                return task
         else:
             raise StopIteration()
 
