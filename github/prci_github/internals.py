@@ -374,17 +374,33 @@ class TaskQueue(collections.Iterator):
 
         From tasks that are available for execution the one with maximum
         priority is returned.
+
+        The priority is tuple (boolean, int, int)
+        First member True if PR has 'prioritize' label, False otherwise
+        Second member is task priority from tasks configuration file
+        Third member is number of tasks on the same PR that are finished or run
+
+        This strategy should prefer completion of PR testing over starting
+        testing of new PR.
         """
+        tasks_done_per_pr = {}
+
         tasks = []
         for pull in PullRequests(self.repo):
+            tasks_done_per_pr[pull.pull.number] = 0
             for task in pull.tasks(self.tasks_config_path, self.job_cls):
+                if (task.status.state != 'pending' or
+                        task.status.description != 'unassigned'):
+                    # the tasks is assigned or done (with whatever result)
+                    tasks_done_per_pr[pull.pull.number] += 1
                 if task.can_run():
                     tasks.append(task)
 
         if tasks:
             return max(
                 tasks,
-                key=lambda t: ('prioritize' in t.pull.labels, t.priority),
+                key=lambda t: ('prioritize' in t.pull.labels, t.priority,
+                               tasks_done_per_pr[t.pull.pull.number]),
             )
         else:
             raise StopIteration()
