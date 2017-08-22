@@ -1,0 +1,43 @@
+<job retention_tag="scratch">
+  <whiteboard>F25 PR CI runner</whiteboard>
+  <recipeSet priority="Normal">
+    <recipe whiteboard="" role="RECIPE_MEMBERS" ks_meta="" kernel_options="" kernel_options_post="">
+      <autopick random="false"/>
+      <watchdog panic="ignore"/>
+      <packages/>
+      <ks_appends/>
+      <repos/>
+      <distroRequires>
+        <and>
+          <distro_family op="=" value="Fedora25"/>
+          <distro_variant op="=" value="Server"/>
+          <distro_name op="=" value="Fedora-25"/>
+          <distro_arch op="=" value="x86_64"/>
+        </and>
+      </distroRequires>
+      <hostRequires>
+        <and>
+          <system_type value="Machine"/>
+          <cpu_count op="&gt;=" value="4"/>
+          <cpu_count op="&lt;=" value="16"/>
+          <memory op="&gt;=" value="8000"/>
+          <memory op="&lt;" value="35000"/>
+          <disk>
+            <size op="&lt;" units="GB" value="1000"/>
+            <size op="&gt;" units="GB" value="60"/>
+          </disk>
+         </and>
+       </hostRequires>
+      <partitions>
+        <partition type="part" name="/var/lib" size="20" fs="ext4"/>
+        <partition type="part" name="/root/" size="20" fs="ext4"/>
+      </partitions>
+      <task name="/distribution/install" role="STANDALONE"/>
+      <task name="/distribution/reservesys" role="STANDALONE">
+        <params>
+          <param name="RESERVETIME" value="356400"/>
+        </params>
+      </task>
+    </recipe>
+  </recipeSet>
+</job>
