@@ -4,8 +4,8 @@
     state: "{{ selinux_mode }}"
     policy: targeted
 
-- name: enable FreeIPA COPR repo
-  shell: "dnf copr enable -y {{ copr_repo }}"
+# - name: enable FreeIPA COPR repo
+#   shell: "dnf copr enable -y {{ copr_repo }}"
 
-- name: disable updates-testing repository
-  shell: dnf config-manager --set-disabled updates-testing
+# - name: disable updates-testing repository
+#   shell: dnf config-manager --set-disabled updates-testing

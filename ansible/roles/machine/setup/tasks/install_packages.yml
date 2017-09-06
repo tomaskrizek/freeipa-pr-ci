@@ -42,9 +42,9 @@
     name: pytest-html
     state: latest
 
-- name: disable distro repositories
-  shell: "dnf config-manager --set-disabled {{ item }}"
-  with_items:
-    - fedora
-    - updates
-    - updates-testing
+# - name: disable distro repositories
+#   shell: "dnf config-manager --set-disabled {{ item }}"
+#   with_items:
+#     - fedora
+#     - updates
+#     - updates-testing
