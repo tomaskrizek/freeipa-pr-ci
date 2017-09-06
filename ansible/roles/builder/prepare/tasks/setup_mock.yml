@@ -6,21 +6,21 @@
     state: link
     force: yes
 
-- name: enable copr repo for mock
-  blockinfile:
-    block: |
-      [freeipa_copr]
-      name=Copr repo {{ freeipa_copr }}
-      baseurl=https://copr-be.cloud.fedoraproject.org/results/{{ freeipa_copr }}/fedora-$releasever-$basearch/
-      type=rpm-md
-      skip_if_unavailable=True
-      gpgcheck=1
-      gpgkey=https://copr-be.cloud.fedoraproject.org/results/{{ freeipa_copr }}/pubkey.gpg
-      repo_gpgcheck=0
-      enabled=1
-      enabled_metadata=1
-    dest: /etc/mock/default.cfg
-    insertbefore: '^\[fedora\]'
+# - name: enable copr repo for mock
+#   blockinfile:
+#     block: |
+#       [freeipa_copr]
+#       name=Copr repo {{ freeipa_copr }}
+#       baseurl=https://copr-be.cloud.fedoraproject.org/results/{{ freeipa_copr }}/fedora-$releasever-$basearch/
+#       type=rpm-md
+#       skip_if_unavailable=True
+#       gpgcheck=1
+#       gpgkey=https://copr-be.cloud.fedoraproject.org/results/{{ freeipa_copr }}/pubkey.gpg
+#       repo_gpgcheck=0
+#       enabled=1
+#       enabled_metadata=1
+#     dest: /etc/mock/default.cfg
+#     insertbefore: '^\[fedora\]'
 
 - name: enable tmpfs to speed up mock
   blockinfile:
