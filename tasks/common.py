@@ -236,22 +236,3 @@ def create_file_from_template(template_path, dest, data):
 
     with open(dest, "w") as fh:
         fh.write(rendered_template)
-
-
-def retry(exception_type):
-    """
-    Retry the decorated function if an exception from
-    exception_type type is raised.
-    """
-    def dec(func):
-        def inner(*args, **kwargs):
-            try:
-                func(*args, **kwargs)
-            except exception_type:
-                logging.debug(traceback.print_exc())
-                logging.warning('Trying again the function: %s', func.__name__)
-                func(*args, **kwargs)
-        return inner
-    return dec
-
-

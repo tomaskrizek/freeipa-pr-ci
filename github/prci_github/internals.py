@@ -15,9 +15,6 @@ import yaml
 import cachecontrol
 import psutil
 import redis
-import OpenSSL
-
-from tasks.common import retry
 
 
 GITHUB_DESCRIPTION_LIMIT = 139
@@ -216,9 +213,6 @@ class Task(object):
     def execute(self, exc_handler=None):
         depends_results = {}
 
-        # sometimes, when running runners in parallel, it may happen
-        # that we get an exception from OpenSLL.
-        @retry(OpenSSL.SSL.Error)
         def __update_status(self):
             for dep in self.requires:
                 status = Status(self.repo, self.pull, dep)
