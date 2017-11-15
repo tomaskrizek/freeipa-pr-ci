@@ -2,8 +2,10 @@ import datetime
 import logging
 import requests
 import time
+import ssl
 
 from cachecontrol.adapter import CacheControlAdapter
+from requests.packages.urllib3.poolmanager import PoolManager
 
 
 RETRY_TIME = 1
@@ -20,6 +22,11 @@ class GitHubAdapter(CacheControlAdapter):
         self.tries = tries
 
         super(GitHubAdapter, self).__init__(*args, **kwargs)
+
+    def init_poolmanager(self, connections, maxsize, block=False):
+            self.poolmanager = PoolManager(
+                num_pools=connections, maxsize=maxsize,
+                block=block, ssl_version=ssl.PROTOCOL_SSLv23)
 
     def send(self, request, *args, **kwargs):
         # Force the caching mechanism to ignore max-age and send the request
