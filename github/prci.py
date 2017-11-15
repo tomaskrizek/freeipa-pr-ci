@@ -219,7 +219,7 @@ class Scheduler(object):
         self.done = False
         self.should_abort = False
         self.reboot = False
-        self.processes = []
+        self.processes = {}
 
         signal.signal(signal.SIGINT, self.terminate)
         signal.signal(signal.SIGALRM, self.check_reboot)
@@ -256,11 +256,14 @@ class Scheduler(object):
 
     def run(self):
         def join():
-            for p in self.processes:
+            procs = copy.copy(self.processes)
+            for task, p in procs.items():
                 if not p.is_alive():
-                    p.join()
                     logging.info('Calling join() for process')
-                    self.processes.remove(p)
+                    p.join()
+                    self.task_queue.free_resources(task)
+                    logging.info('Task {} released resources'.format(task.name))
+                    del(self.processes[task])
 
         def execute_task(task):
             try:
@@ -268,9 +271,6 @@ class Scheduler(object):
             except Exception as e:
                 logging.error(e)
                 sentry_report_exception({'module': 'github'})
-            finally:
-                self.task_queue.free_resources(task)
-                logging.info('Task {} released resources'.format(task.name))
 
         while not self.done:
             join()
@@ -295,7 +295,7 @@ class Scheduler(object):
             for task in tasks:
                 p = multiprocessing.Process(target=execute_task, args=(task,))
                 p.start()
-                self.processes.append(p)
+                self.processes[task] = p
 
         join()
 

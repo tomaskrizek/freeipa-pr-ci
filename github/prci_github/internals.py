@@ -12,7 +12,6 @@ import requests
 import time
 import yaml
 
-import multiprocessing
 import cachecontrol
 import psutil
 import redis
@@ -391,7 +390,7 @@ class TaskQueue(object):
         self.runner_id = runner_id
         self.total_cpus = psutil.cpu_count()
         self.total_memory = psutil.virtual_memory().total / float(2 ** 20)
-        self.running_tasks = multiprocessing.Manager().dict()
+        self.running_tasks = {}
         self.done = False
 
     @property
