@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import copy
 import logging
 import multiprocessing
 import logging.config
@@ -255,10 +256,10 @@ class Scheduler(object):
             self.reboot = True
 
     def run(self):
-        def join():
+        def join(wait=False):
             procs = copy.copy(self.processes)
             for task, p in procs.items():
-                if not p.is_alive():
+                if wait or not p.is_alive():
                     logging.info('Calling join() for process')
                     p.join()
                     self.task_queue.free_resources(task)
@@ -297,7 +298,7 @@ class Scheduler(object):
                 p.start()
                 self.processes[task] = p
 
-        join()
+        join(wait=True)
 
 
 def main():
